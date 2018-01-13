@@ -27,9 +27,10 @@ var server = app.listen(8081, function () {
 })
 
 app.all('*', function(req, res, next) {
-  res.header('Access-Control-Allow-Origin', '*');
+  res.header('Access-Control-Allow-Origin', 'http://localhost:4200');
   res.header('Access-Control-Allow-Methods', 'PUT, GET, POST, DELETE, OPTIONS');
   res.header('Access-Control-Allow-Headers', 'Content-Type');
+  res.header("Access-Control-Allow-Credentials", "true");
   next();
 });
 
@@ -73,6 +74,26 @@ connection.query(updatequery,(error,results,fields) =>{
     
     }
   })
+});
+
+app.get("/appartementdetail",(request : Request,response: Response) => {
+  let connection = mysql.createConnection(mysqlConfig);
+  connection.connect();
+  let value = request.query["id"]
+  let query = "Select * from appartements INNER JOIN usertable ON appartements.contact = usertable.id where appartements.id = ?";
+  console.log(query, );
+  connection.query(query,[value], (error,rows)=>{
+    if (error){
+      response.send({
+        "code": 400,
+        "failed": "error ocurred"
+      })
+    }else {
+    let json =JSON.stringify(rows);
+    response.send(json);
+    }
+  });
+
 });
 
 app.get("/appartement", (request: Request, response: Response)=>{
@@ -156,7 +177,8 @@ response.send(tmp);
    
 
 app.post('/logout',isAuthenticated, (request: Request, response: Response) => {
-  delete request.session.user;
+   request.session.user = undefined;
+   console.log("User has logged out");
   response.send("Logout Successfull");
 
 })
@@ -181,10 +203,16 @@ app.post('/login', (request: Request, response: Response) => {
         bcrypt.compare(user.password, results[0].password, (err, result) => {
           if (result) {
             request.session.user = results[0];
-            response.send("Login Successfull");
+            response.send({
+              "code": 200,
+              "success": "Login successfull"
+            });
           }
           else {
-            response.send("Login failed");
+            response.send({
+              "code": 400,
+              "failed": "Wrong username or password."
+            });
           }
         })
 
