@@ -199,7 +199,14 @@ app.post('/login', (request: Request, response: Response) => {
       })
     }
     else {
-      if (results[0].password.length) {
+      console.log(results.length);
+      if (results.length === 0){
+        response.send({
+          "code": 400,
+          "failed": "Wrong username or password."
+        });
+      }
+      if (results.length !== 0 && results[0].password.length) {
         bcrypt.compare(user.password, results[0].password, (err, result) => {
           if (result) {
             request.session.user = results[0];
