@@ -26,6 +26,12 @@ var server = app.listen(8081, function () {
   console.log("App listening at http://%s:%s", host, port)
 })
 
+/* CORS Requests You need to set Cross Origin Headers to allow
+for requests from a certain domain. In our case that is localhost:4200.
+If you dont have the CORS Headers set your browser wont allow the requests.
+In Methods you see the allowed methods. The other important thing is to send 
+Credentials (Thats the Session (when ur logged in)*/ 
+
 app.all('*', function(req, res, next) {
   res.header('Access-Control-Allow-Origin', 'http://localhost:4200');
   res.header('Access-Control-Allow-Methods', 'PUT, GET, POST, DELETE, OPTIONS');
@@ -36,7 +42,7 @@ app.all('*', function(req, res, next) {
 
 app.use(session({ secret: "geheim" }));
 
-
+/* Checks whether the usr is logged in or not */
  let isAuthenticated = (request: Request, response: Response, next: NextFunction) => {
 if (request.session.user){
   next();
@@ -46,6 +52,8 @@ else {
 }
  }
 
+ /*This function lets you update your appartements. Works fine in backend 
+ but isn't used. */
 app.put ("/appartement", isAuthenticated, (request: Request, response: Response) => {
   let updatequery="UPDATE appartements SET "
   let connection = mysql.createConnection(mysqlConfig);
@@ -76,6 +84,9 @@ connection.query(updatequery,(error,results,fields) =>{
   })
 });
 
+/* This function fetches the Data for a specific Appartement 
+in a Join with the Usertable to allow display of the Owner and
+the email. */
 app.get("/appartementdetail",(request : Request,response: Response) => {
   let connection = mysql.createConnection(mysqlConfig);
   connection.connect();
@@ -96,6 +107,11 @@ app.get("/appartementdetail",(request : Request,response: Response) => {
 
 });
 
+/*This GET Request gets all appartements that match certain attributes
+e.g. a specific name or that its from a certain city.
+It also allows for Limit and Offset which means you can choose
+how many found results you want to displa and from what position on e.g.
+5 results displayed starting from the 10th one found */
 app.get("/appartement", (request: Request, response: Response)=>{
   let connection = mysql.createConnection(mysqlConfig);
   connection.connect();
@@ -134,6 +150,11 @@ app.get("/appartement", (request: Request, response: Response)=>{
   
 })
 
+
+/* This POST Request allows you to add a new entry in your table.
+You need to be logged in to do this request. It's a prepared statement which
+means it's a fixed query which protects from SQL Injection an you can only enter
+the values where the question mark is placed.  */
 app.post("/postappartement", isAuthenticated, (request: Request, response: Response) => {
   let connection = mysql.createConnection(mysqlConfig);
   connection.connect();
@@ -162,12 +183,15 @@ app.post("/postappartement", isAuthenticated, (request: Request, response: Respo
 })
 })
 
+/* Some testpost to check if a post request is working. Can be deleted */
 app.post("/testpost", (request: Request, response: Response) => {
   console.log(request.body.username);
   request.session.username = request.body.username;
   response.send("Username: " + request.body.username);
 })
 
+/*This return the user specific data when hes logged in except for the PW. 
+In our case thats Email and Username. */
 app.get("/isloggedin",isAuthenticated, (request: Request, response: Response) => {
   let tmp=Object.assign({},request.session.user)
   delete tmp.password;
@@ -175,7 +199,7 @@ response.send(tmp);
   });
 
    
-
+/*Logs the user out by deleting his session. */
 app.post('/logout',isAuthenticated, (request: Request, response: Response) => {
    request.session.user = undefined;
    console.log("User has logged out");
@@ -183,11 +207,15 @@ app.post('/logout',isAuthenticated, (request: Request, response: Response) => {
 
 })
 
+/*Login function. It checks whether the username exists in the database
+and if it does it hashes the entered pw with bicrypt and compares it
+with the hashed on in the database. If its a match a new session is created
+with the user details */
 app.post('/login', (request: Request, response: Response) => {
   let connection = mysql.createConnection(mysqlConfig);
   connection.connect();
   let user = {
-    "username": request.body.username,
+    "username": request.body.username, 
     "password": request.body.password
   }
   connection.query("SELECT * from usertable WHERE username = ? ", [user.username], (error, results) => {
@@ -232,7 +260,11 @@ app.post('/login', (request: Request, response: Response) => {
 });
 
 
-
+/*This POST Request enters a new user in the DB
+It takes the entered values from the request Body and then puts them
+in the prepared statement to create a new entry in the DB. Bcrypt also 
+hashes the password to make sure it's stored only in the hashed version
+in our DB.  */
 app.post('/register', (request: Request, response: Response) => {
   let connection = mysql.createConnection(mysqlConfig);
   connection.connect();
